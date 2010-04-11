@@ -1,16 +1,6 @@
 #!/usr/bin/env python
 import tables
 
-
-     # H5T_STD_I64LE "index";
-      # H5T_IEEE_F64LE "wall_time";
-      # H5T_STD_I64LE "basic_steps";
-      # H5T_IEEE_F64LE "sim_time";
-      # H5T_IEEE_F64LE "be";
-      # H5T_IEEE_F64LE "ve";
-      # H5T_IEEE_F64LE "ne";
-      # H5T_IEEE_F64LE "msf";
-
 def dump_scalars(fname, start=0):
     fields = ('index', 'basic_steps', 'wall_time', 'sim_time', 'be', 've', 'ne', 'msf')
     formats = ('%-d %-d' + ' %-10.4g'*6).split()
@@ -28,7 +18,8 @@ def dump_scalars(fname, start=0):
 
 if __name__ == '__main__':
     import sys, time
+    fname = sys.argv[1]
     start = 0
     while True:
-        start = dump_scalars(sys.argv[1], start)
+        start = dump_scalars(fname, start)
         time.sleep(10)
