@@ -23,9 +23,23 @@ def dump_scalars(fname, start=0):
         
 
 if __name__ == '__main__':
-    import sys, time
-    fname = sys.argv[1]
-    start = 0
-    while True:
-        start = dump_scalars(fname, start)
-        time.sleep(10)
+    import time
+    from optparse import OptionParser
+
+    parser = OptionParser()
+    parser.add_option("-f", action="store_true", dest="follow",
+                      default=False, help="follow, like 'tail -f'")
+
+    options, args = parser.parse_args()
+
+    fname = args[0]
+
+    start = dump_scalars(fname)
+
+    if options.follow:
+        while True:
+            try:
+                start = dump_scalars(fname, start)
+                time.sleep(10)
+            except KeyboardInterrupt:
+                import sys; sys.exit(0)
