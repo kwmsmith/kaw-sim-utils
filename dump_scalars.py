@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 import tables
 
-INT_FMT, FLT_FMT = "%9d", "%#-13.4g"
+INT_FMT, FLT_FMT = "%8d", "%#-10.4e"
 
 
 def dump_scalars(fname, start=0):
