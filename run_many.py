@@ -1,6 +1,6 @@
 #!/usr/bin/env python
  
-import os
+import os, time
 import subprocess
 
 DIR_BASE = "_run"
@@ -32,7 +32,7 @@ def initialize(nruns, dir_base, force):
     for param, dir in zip(params, dirs):
         fname = os.path.join(dir, INPUT_PARAMS)
         if os.path.exists(fname) and not force:
-            raise RuntimeException("file %s exists" % fname)
+            raise RuntimeError("file %s exists" % fname)
         fh = open(fname, mode='w')
         fh.write(param)
         fh.close()
@@ -43,8 +43,13 @@ def run_many(dirs, command):
     basedir = os.path.abspath(os.curdir)
     for dir in dirs:
         os.chdir(dir)
+        print "-"*79
+        print "directory: %s" % os.path.abspath(os.curdir)
+        print "command: %s" % command
+        print "time: %s" % time.ctime()
+        print "-"*79
         try:
-            subprocess.check_call(command)
+            subprocess.check_call(command, shell=True)
         finally:
             os.chdir(basedir)
 
@@ -63,4 +68,4 @@ if __name__ == '__main__':
         parser.print_help()
     else:
         dirs = initialize(options.nruns, DIR_BASE, options.force)
-        print dirs
+        run_many(dirs, args)
