@@ -42,14 +42,24 @@ def gen_params(buf, N, start, step):
     return ret
 
 def find_dirs(dir_base):
-    return glob.glob("%s_??" % dir_base)
+    return sorted(glob.glob("%s_??" % dir_base))
 
-#def restart_init(dir_base, input_params):
-    #for dir in find_dirs(dir_base):
-        #ip = open(os.path.join(dir, input_params), mode='r'))
-        
-
-
+def restart_setup(dir_base, input_params_name, new_nsteps):
+    dirs = find_dirs(dir_base)
+    for dir in dirs:
+        ip_fname = os.path.join(dir, input_params_name)
+        ip = open(ip_fname, mode='r')
+        parse_dict, order_dict = parse_ip(ip)
+        ip.close()
+        old_nsteps = int(parse_dict['nsteps'])
+        if old_nsteps > int(new_nsteps):
+            raise RuntimeError("old nsteps %d > new_nsteps %d" % (old_nsteps, int(new_nsteps)))
+        parse_dict['restart'] = str(1)
+        parse_dict['nsteps'] = str(new_nsteps)
+        ip = open(ip_fname, mode='w')
+        ip.write(write_ip(parse_dict, order_dict).getvalue())
+        ip.close()
+    return dirs
 
 def initialize(nruns, dir_base, force):
     dirs = []
@@ -73,8 +83,6 @@ def initialize(nruns, dir_base, force):
         fh = open(fname, mode='w')
         fh.write(param)
         fh.close()
-
-    return dirs
 
 def run_many(dirs, command):
     basedir = os.path.abspath(os.curdir)
@@ -102,12 +110,16 @@ if __name__ == '__main__':
     parser.add_option('-c', dest="command",
             type="string", default='', help="command string")
     parser.add_option('-r', dest="restart",
-            type="int", default=-1, help="restart runs and set new nsteps")
+            type="int", default=None, help="restart runs and set new nsteps")
 
     options, args = parser.parse_args()
 
-    if options.nruns == -1 or not options.command:
+    if not options.command:
         parser.print_help()
     else:
-        dirs = initialize(options.nruns, DIR_BASE, options.force)
+        if options.restart is not None:
+            restart_setup(DIR_BASE, INPUT_PARAMS, options.restart)
+        else:
+            initialize(options.nruns, DIR_BASE, options.force)
+        dirs = find_dirs(DIR_BASE)
         run_many(dirs, [options.command])
