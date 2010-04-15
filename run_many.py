@@ -1,11 +1,38 @@
 #!/usr/bin/env python
  
 import os, time, sys
+import re
 import subprocess
+import glob
+from cStringIO import StringIO
 
 DIR_BASE = "_run"
 INPUT_PARAMS = "input_params.in"
 TEMPLATE_NAME =  "%s.template" % INPUT_PARAMS
+
+matcher = re.compile("^\s*input_params%(\w*)\s*=\s*([^,]*),$").match
+def parse_ip(buf):
+    parse_dict = {}
+    order_dict = {}
+    lines = buf.readlines()
+    for idx, line in enumerate(lines):
+        m = matcher(line)
+        if not m: continue
+        key, val = m.groups()
+        parse_dict[key] = val
+        order_dict[idx] = key
+    return parse_dict, order_dict
+
+def write_ip(parse_dict, order_dict):
+    buf = StringIO()
+    buf.write("&params\n")
+    for idx in sorted(order_dict):
+        key = order_dict[idx]
+        val = parse_dict[key]
+        buf.write("input_params%%%(pname)s = %(pval)s,\n" % \
+                    {'pname':key, 'pval':val})
+    buf.write("/\n")
+    return buf
 
 def gen_params(buf, N, start, step):
     template = buf.read()
@@ -13,6 +40,16 @@ def gen_params(buf, N, start, step):
     for i in range(start, start+N*step, step):
         ret.append(template.format(RNG_SEED=i))
     return ret
+
+def find_dirs(dir_base):
+    return glob.glob("%s_??" % dir_base)
+
+#def restart_init(dir_base, input_params):
+    #for dir in find_dirs(dir_base):
+        #ip = open(os.path.join(dir, input_params), mode='r'))
+        
+
+
 
 def initialize(nruns, dir_base, force):
     dirs = []
@@ -64,6 +101,8 @@ if __name__ == '__main__':
             action="store_true", default=False, help="force initialization")
     parser.add_option('-c', dest="command",
             type="string", default='', help="command string")
+    parser.add_option('-r', dest="restart",
+            type="int", default=-1, help="restart runs and set new nsteps")
 
     options, args = parser.parse_args()
 
