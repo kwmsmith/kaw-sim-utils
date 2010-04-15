@@ -1,6 +1,6 @@
 #!/usr/bin/env python
  
-import os, time
+import os, time, sys
 import subprocess
 
 DIR_BASE = "_run"
@@ -48,6 +48,7 @@ def run_many(dirs, command):
         print "command: %s" % command
         print "time: %s" % time.ctime()
         print "-"*79
+        sys.stdout.flush()
         try:
             subprocess.check_call(command, shell=True)
         finally:
@@ -55,17 +56,19 @@ def run_many(dirs, command):
 
 if __name__ == '__main__':
     from optparse import OptionParser
-    usage = "run_many.py [options] -n NRUNS 'command string'"
+    usage = "run_many.py [options] -n NRUNS -c 'command string'"
     parser = OptionParser(usage=usage)
     parser.add_option("-n", type="int", dest="nruns", 
             default=-1, help="number of runs")
     parser.add_option('-f', '--force', dest="force",
             action="store_true", default=False, help="force initialization")
+    parser.add_option('-c', dest="command",
+            type="string", default='', help="command string")
 
     options, args = parser.parse_args()
 
-    if options.nruns == -1 or not args:
+    if options.nruns == -1 or not options.command:
         parser.print_help()
     else:
         dirs = initialize(options.nruns, DIR_BASE, options.force)
-        run_many(dirs, args)
+        run_many(dirs, [options.command])
