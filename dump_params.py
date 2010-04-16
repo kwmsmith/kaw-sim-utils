@@ -4,8 +4,8 @@ import tables
 COMPILED_PARAMS = """NP NX NY INTEGRATOR MODEL 
             MAJOR_VERSION MINOR_VERSION REVISION""".split()
 
-PARAMS = """tstep dtfac nsteps nout_arrs nout_scals lx ly rho_s2 viscos
-            h_viscos resis h_resis diffus h_diffus eb ev en spectrum_slope 
+PARAMS = """tstep dtfac nsteps max_wall_mins nout_arrs nout_scals lx ly rho_s2
+            viscos h_viscos resis h_resis diffus h_diffus eb ev en spectrum_slope 
             spectrum_peak rng_seed""".upper().split()
 
 def dump_params(fname):
