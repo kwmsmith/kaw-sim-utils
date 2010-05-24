@@ -61,7 +61,7 @@ def restart_setup(dir_base, input_params_name, new_nsteps):
         ip.close()
     return dirs
 
-def initialize(nruns, dir_base, force):
+def initialize(nruns, dir_base, force, seed):
     dirs = []
     for i in range(nruns):
         dir_name = "%s_%02d" % (dir_base, i)
@@ -73,7 +73,7 @@ def initialize(nruns, dir_base, force):
                 raise
 
     template = open(TEMPLATE_NAME, mode='r')
-    params = gen_params(template, nruns, start=51, step=1000)
+    params = gen_params(template, nruns, start=seed, step=1000)
     template.close()
 
     for param, dir in zip(params, dirs):
@@ -103,6 +103,8 @@ if __name__ == '__main__':
     from optparse import OptionParser
     usage = "run_many.py [options] -n NRUNS -c 'command string'"
     parser = OptionParser(usage=usage)
+    parser.add_option("-s", "--seed", dest="seed",
+            default=51, type='int', help="rng seed, ignored with restart")
     parser.add_option("-n", type="int", dest="nruns", 
             default=-1, help="number of runs")
     parser.add_option('-f', '--force', dest="force",
@@ -114,12 +116,15 @@ if __name__ == '__main__':
 
     options, args = parser.parse_args()
 
+    if '&' in options.command:
+        parser.error("'&' in command string -- not meant to be run in background.")
+
     if not options.command:
         parser.print_help()
     else:
         if options.restart is not None:
             restart_setup(DIR_BASE, INPUT_PARAMS, options.restart)
         else:
-            initialize(options.nruns, DIR_BASE, options.force)
+            initialize(options.nruns, DIR_BASE, options.force, options.seed)
         dirs = find_dirs(DIR_BASE)
         run_many(dirs, [options.command])
