@@ -1,5 +1,5 @@
 #!/usr/bin/env python
- 
+
 import os, time, sys
 import re
 import subprocess
@@ -101,11 +101,19 @@ def run_many(dirs, command):
 
 if __name__ == '__main__':
     from optparse import OptionParser
-    usage = "run_many.py [options] -n NRUNS -c 'command string'"
+    usage = """\
+run_many.py [options] -n NRUNS -c 'command string'
+
+example:
+    run_many.py -n 10   -c 'mpiexec -np 4 ../three_fields.x </dev/null'  >run_many.out &
+to restart:
+    run_many.py -r 3000 -c 'mpiexec -np 4 ../three_fields.x </dev/null' >>run_many.out &\
+"""
+
     parser = OptionParser(usage=usage)
     parser.add_option("-s", "--seed", dest="seed",
             default=51, type='int', help="rng seed, ignored with restart")
-    parser.add_option("-n", type="int", dest="nruns", 
+    parser.add_option("-n", type="int", dest="nruns",
             default=-1, help="number of runs")
     parser.add_option('-f', '--force', dest="force",
             action="store_true", default=False, help="force initialization")
