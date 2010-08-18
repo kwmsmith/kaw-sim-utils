@@ -8,13 +8,16 @@ from cStringIO import StringIO
 
 DIR_BASE = "_run"
 INPUT_PARAMS = "input_params.in"
-TEMPLATE_NAME =  "%s.template" % INPUT_PARAMS
+PARAM_VALS_NAME = "param_vals"
 
 matcher = re.compile("^\s*input_params%(\w*)\s*=\s*([^,]*),$").match
 def parse_ip(buf):
+    if isinstance(buf, basestring):
+        lines = buf.splitlines()
+    else:
+        lines = buf.readlines()
     parse_dict = {}
     order_dict = {}
-    lines = buf.readlines()
     for idx, line in enumerate(lines):
         m = matcher(line)
         if not m: continue
@@ -23,26 +26,50 @@ def parse_ip(buf):
         order_dict[idx] = key
     return parse_dict, order_dict
 
-def write_ip(parse_dict, order_dict):
-    buf = StringIO()
-    buf.write("&params\n")
+def gen_ip(parse_dict, order_dict):
+    buf = []
+    buf += ["&params"]
     for idx in sorted(order_dict):
         key = order_dict[idx]
         val = parse_dict[key]
-        buf.write("input_params%%%(pname)s = %(pval)s,\n" % \
-                    {'pname':key, 'pval':val})
-    buf.write("/\n")
-    return buf
+        buf += ["input_params%%%(pname)s = %(pval)s," % \
+                    {'pname':key, 'pval':val}]
+    buf += ["/", ""]
+    return '\n'.join(buf)
 
-def gen_params(buf, N, start, step):
-    template = buf.read()
+def gen_param_dicts(param_vals, param_dicts):
+    if not param_vals:
+        return param_dicts
+
+    pnames, vals = param_vals.popitem()
+
+    if isinstance(pnames, basestring):
+        pnames = (pnames,)
+
+    pdicts_out = []
+
+    for pdict in param_dicts:
+        for val in vals:
+            new_pdict = pdict.copy()
+            for pname in pnames:
+                new_pdict[pname] = str(val)
+            pdicts_out.append(new_pdict)
+
+    return gen_param_dicts(param_vals, pdicts_out)
+
+def gen_params(template, param_vals):
+    parse_dict, odict = parse_ip(template)
     ret = []
-    for i in range(start, start+N*step, step):
-        ret.append(template.format(RNG_SEED=i))
+
+    param_dicts = gen_param_dicts(param_vals.copy(), [parse_dict.copy()])
+
+    for pdict in param_dicts:
+        ret.append(gen_ip(pdict, odict))
+
     return ret
 
 def find_dirs(dir_base):
-    return sorted(glob.glob("%s_??" % dir_base))
+    return sorted(glob.glob("%s*" % dir_base))
 
 def restart_setup(dir_base, input_params_name, new_nsteps):
     dirs = find_dirs(dir_base)
@@ -61,20 +88,21 @@ def restart_setup(dir_base, input_params_name, new_nsteps):
         ip.close()
     return dirs
 
-def initialize(nruns, dir_base, force, seed):
-    dirs = []
-    for i in range(nruns):
-        dir_name = "%s_%02d" % (dir_base, i)
-        dirs.append(dir_name)
+def initialize(dir_base, force, template_name):
+
+    template_mod = __import__(template_name)
+    params = gen_params(template_mod.template, template_mod.param_vals)
+
+    from hashlib import md5
+
+    dirs = ["%s_%s" % (dir_base, md5(param).hexdigest()) for param in params]
+
+    for dir in dirs:
         try:
-            os.mkdir(dir_name)
+            os.mkdir(dir)
         except OSError, e:
             if e.errno != 17: # file exists
                 raise
-
-    template = open(TEMPLATE_NAME, mode='r')
-    params = gen_params(template, nruns, start=seed, step=1000)
-    template.close()
 
     for param, dir in zip(params, dirs):
         fname = os.path.join(dir, INPUT_PARAMS)
@@ -102,25 +130,24 @@ def run_many(dirs, command):
 if __name__ == '__main__':
     from optparse import OptionParser
     usage = """\
-run_many.py [options] -n NRUNS -c 'command string'
+run_many.py [options] -c 'command string'
 
 example:
-    run_many.py -n 10   -c 'mpiexec -np 4 ../three_fields.x </dev/null'  >run_many.out &
+    run_many.py -c 'mpiexec -np 4 ../three_fields.x </dev/null'  >run_many.out &
 to restart:
     run_many.py -r 3000 -c 'mpiexec -np 4 ../three_fields.x </dev/null' >>run_many.out &\
 """
 
     parser = OptionParser(usage=usage)
-    parser.add_option("-s", "--seed", dest="seed",
-            default=51, type='int', help="rng seed, ignored with restart")
-    parser.add_option("-n", type="int", dest="nruns",
-            default=-1, help="number of runs")
     parser.add_option('-f', '--force', dest="force",
             action="store_true", default=False, help="force initialization")
     parser.add_option('-c', dest="command",
             type="string", default='', help="command string")
     parser.add_option('-r', dest="restart",
             type="int", default=None, help="restart runs and set new nsteps")
+    parser.add_option('-t', dest='template_name',
+            type='string', default=PARAM_VALS_NAME,
+            help="name of template file [default: %default]")
 
     options, args = parser.parse_args()
 
@@ -133,6 +160,6 @@ to restart:
         if options.restart is not None:
             restart_setup(DIR_BASE, INPUT_PARAMS, options.restart)
         else:
-            initialize(options.nruns, DIR_BASE, options.force, options.seed)
+            initialize(DIR_BASE, options.force, options.template_name)
         dirs = find_dirs(DIR_BASE)
         run_many(dirs, [options.command])

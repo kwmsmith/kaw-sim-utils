@@ -1,3 +1,4 @@
+
 template = '''
 &params
 input_params%restart = 0,
@@ -20,7 +21,7 @@ input_params%Ev = 0.25e-2,
 input_params%En = 0.25e-3,
 input_params%spectrum_slope = 3.0e0,
 input_params%spectrum_peak = 2.0e0,
-input_params%rng_seed = {RNG_SEED},
+input_params%rng_seed = -1,
 /
 '''
 
@@ -30,21 +31,27 @@ from cStringIO import StringIO
 from nose.tools import set_trace, eq_
  
 def test_params_output():
-    buf = StringIO(template)
-    N, start, step = 10, 51, 100
-    params = run_many.gen_params(buf, N=10, start=51, step=100)
-    eq_(len(params), 10)
-    for idx, param in enumerate(params):
-        rng_seed = 51 + idx * step
-        eq_(param, template.format(RNG_SEED=rng_seed))
+    rnums = [10, 20, 30]
+    engs = [1.0, 2.0]
+    param_vals = {
+            'rng_seed' : rnums,
+            ('Eb','Ev') : engs,
+            }
+    tmpl = StringIO(template)
+    params = run_many.gen_params(tmpl, param_vals)
+    eq_(len(set(params)), 6)
+    for rnum, param in zip(rnums, params):
+        parse_dict, odict = run_many.parse_ip(param)
+        eq_(parse_dict['rng_seed'], str(rnum))
+        eq_(parse_dict['Eb'], parse_dict['Ev'])
 
 def test_parse_write_ip():
     buf = StringIO(example_ip)
     parse_dict, order_dict = run_many.parse_ip(buf)
     parse_dict['restart'] = str(1)
     parse_dict['nsteps'] = str(6000)
-    out_buf = run_many.write_ip(parse_dict, order_dict)
-    eq_(example_ip_out, out_buf.getvalue())
+    out_buf = run_many.gen_ip(parse_dict, order_dict)
+    eq_(example_ip_out, out_buf)
 
 example_ip = '''\
 &params
