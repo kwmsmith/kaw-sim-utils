@@ -133,19 +133,25 @@ def initialize(dir_base, force, template_name):
         fh.write(param)
         fh.close()
 
+def timestamp(indicator, directory, command, fhandle=sys.stdout):
+    divider = '-'*79
+    fhandle.write(divider)
+    fhandle.write(indicator)
+    fhandle.write("directory: %s" % directory)
+    fhandle.write("command: %s" % command)
+    fhandle.write("time: %s" % time.ctime())
+    fhandle.write(divider)
+    fhandle.flush()
+
 def run_many(dirs, command):
-    basedir = os.path.abspath(os.curdir)
+    basedir = os.getcwd()
     for dir in dirs:
         os.chdir(dir)
-        print "-"*79
-        print "directory: %s" % os.path.abspath(os.curdir)
-        print "command: %s" % command
-        print "time: %s" % time.ctime()
-        print "-"*79
-        sys.stdout.flush()
+        timestamp('START', os.getcwd(), command)
         try:
             subprocess.check_call(command, shell=True)
         finally:
+            timestamp('STOP', os.getcwd(), command)
             os.chdir(basedir)
 
 if __name__ == '__main__':
