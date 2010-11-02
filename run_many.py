@@ -38,6 +38,21 @@ def gen_ip(parse_dict, order_dict):
     return '\n'.join(buf)
 
 def gen_param_dicts(param_vals, param_dicts):
+    '''
+    param_vals is a dict, entries are either
+        'param-name' : [list-of-values]
+    or
+        ('param-name-1', 'param-name-2', ...) : [list-of-values]
+    or
+        ('param-name-1', 'param-name-2', ...) : [[list-of-values],[list-of-values],...]
+    In the first instance, a new param_dict will be generated with param-name
+    set to one of the values specified.
+    In the second instance, the parameters both vary but take on the exact same
+    values.
+    In the third instance, the parameters both vary together, taking on values
+    from their resp. lists.
+    '''
+
     if not param_vals:
         return param_dicts
 
@@ -46,13 +61,19 @@ def gen_param_dicts(param_vals, param_dicts):
     if isinstance(pnames, basestring):
         pnames = (pnames,)
 
+    if not isinstance(vals[0], (tuple, list)):
+        vals = [vals]*len(pnames)
+
+    assert len(vals) == len(pnames)
+
     pdicts_out = []
 
+    N = len(vals[0])
     for pdict in param_dicts:
-        for val in vals:
+        for idx in range(N):
             new_pdict = pdict.copy()
-            for pname in pnames:
-                new_pdict[pname] = str(val)
+            for pname, val in zip(pnames, vals):
+                new_pdict[pname] = str(val[idx])
             pdicts_out.append(new_pdict)
 
     return gen_param_dicts(param_vals, pdicts_out)
